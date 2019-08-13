@@ -4,18 +4,146 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Grid</title>
-    <link rel="stylesHeet" type="text/css" href="./resources/css/ext-all.css"/>
+    <link rel="stylesHeet" type="text/css" href="./resources/css/ext-all.css" />
     <script type="text/javascript" src="./adapter/ext/ext-base.js"></script>
     <script type="text/javascript" src="./js/ext-all.js"></script>
     <script type="text/javascript" src="./js/PagingMemoryProxy.js"></script>
     <script>
         Ext.onReady(function () {
-            const checkboxModel = new Ext.grid.CheckboxSelectionModel();
+
+            var selectionsIndex = [], pageSize = 5
+
+            const checkboxModel = new Ext.grid.CheckboxSelectionModel({
+                listeners: {
+                    'rowselect': function (selectionModel, rowIndex, row) {
+                        selectionsIndex.push(rowIndex)
+                    },
+                    'rowdeselect': function (selectionModel, rowIndex, row) {
+                        selectionsIndex = selectionsIndex.filter(val => val !== rowIndex)
+                    }
+                }
+            });
+
+            const gridRow = Ext.data.Record.create([
+                { name: 'id', type: 'number' },
+                { name: 'name', type: 'string' },
+                { name: 'className', type: 'string' },
+                { name: 'sex', type: 'string' },
+                { name: 'birthday', type: 'date' },
+                { name: 'avatar', type: 'string' },
+            ])
+
+            const toolBar = new Ext.Toolbar({
+                items: [
+                    {
+                        text: 'Add',
+                        handler: function () {
+                            var newRecord = new gridRow({
+                                id: '',
+                                name: '',
+                                className: '',
+                                sex: '',
+                                birthday: '',
+                                avatar: ''
+                            })
+                            var insertRowIndex = 0
+                            if (checkboxModel.hasSelection()) {
+                                insertRowIndex = Math.min.apply(null, selectionsIndex);
+                            }
+                            grid.stopEditing()
+                            store.insert(insertRowIndex, newRecord)
+                            grid.startEditing(insertRowIndex, 0)
+                        }
+                    }, {
+                        text: 'delete',
+                        handler: function () {
+                            if (checkboxModel.hasSelection()) {
+                                Ext.Msg.confirm('提示', '确定删除所选数据吗？', function (text) {
+                                    if (text === 'yes') {
+                                        store.remove(checkboxModel.getSelections())
+                                        grid.getView().refresh();
+                                    }
+                                })
+                            } else {
+                                Ext.Msg.alert('提示', '请选择要删除的数据')
+                            }
+                        }
+                    }]
+            })
+
+            const contextMenu = new Ext.menu.Menu({
+                items: [{
+                    text: 'Up',
+                    handler: function () {
+                        if (checkboxModel.getSelections().length > 1 || !checkboxModel.hasSelection()) {
+                            Ext.Msg.alert('提示', '请选择一行数据')
+                        } else {
+                            var moveRow = checkboxModel.getSelected()
+                            var index = store.indexOf(moveRow);
+                            if (index > 0) {
+                                grid.store.insert(index - 1, moveRow);
+                                grid.getView().refresh();
+                            } else {
+                                Ext.Msg.alert('提示', '这已经是第一行数据')
+                            }
+                        }
+                    }
+                }, {
+                    text: 'Down',
+                    handler: function () {
+                        if (checkboxModel.getSelections().length > 1 || !checkboxModel.hasSelection()) {
+                            Ext.Msg.alert('提示', '请选择一行数据')
+                        } else {
+                            var moveRow = checkboxModel.getSelected()
+                            var index = store.indexOf(moveRow);
+                            if (index < pageSize - 1) {
+                                grid.store.insert(index + 1, moveRow);
+                                grid.getView().refresh();
+                            } else {
+                                Ext.Msg.alert('提示', '这已经是本页最后一行数据')
+                            }
+                        }
+                    }
+                }, {
+                    text: 'First',
+                    handler: function () {
+                        if (checkboxModel.getSelections().length > 1 || !checkboxModel.hasSelection()) {
+                            Ext.Msg.alert('提示', '请选择一行数据')
+                        } else {
+                            var moveRow = checkboxModel.getSelected()
+                            grid.store.insert(0, moveRow);
+                            grid.getView().refresh();
+                        }
+                    }
+                }, {
+                    text: 'Last',
+                    handler: function () {
+                        if (checkboxModel.getSelections().length > 1 || !checkboxModel.hasSelection()) {
+                            Ext.Msg.alert('提示', '请选择一行数据')
+                        } else {
+                            var moveRow = checkboxModel.getSelected()
+                            grid.store.insert(pageSize - 1, moveRow);
+                            grid.getView().refresh();
+                        }
+                    }
+                }]
+            })
+
+            const contextDoc = Ext.getDoc();
+            Ext.get(contextDoc).on('contextmenu', e => {
+                e.preventDefault();
+                contextMenu.showAt(e.getXY());
+            });
+
             const columnModel = new Ext.grid.ColumnModel([
                 new Ext.grid.RowNumberer(),
                 checkboxModel,
                 {
-                    header: '编号', dataIndex: 'id'
+                    header: '编号', dataIndex: 'id', editor: new Ext.grid.GridEditor(
+                        new Ext.form.TextField({
+                            allowBlank: false
+                        })
+                    )
                 }, {
                     header: '姓名', dataIndex: 'name', editor: new Ext.grid.GridEditor(
                         new Ext.form.TextField({
@@ -31,7 +159,11 @@
                 }, {
                     header: '性别', dataIndex: 'sex', renderer: function (val) {
                         return (val === 'male') ? '男' : '女'
-                    }
+                    }, editor: new Ext.grid.GridEditor(
+                        new Ext.form.TextField({
+                            allowBlank: false
+                        })
+                    )
                 }, {
                     header: '生日', dataIndex: 'birthday',
                     renderer: Ext.util.Format.dateRenderer('Y-m-d'),
@@ -46,18 +178,18 @@
             ])
 
             const data = [
-                ['1', 'AA', 'class1', 'male', '2001-01-02', 'male'],
-                ['2', 'BB', 'class2', 'female', '2001-01-02', 'female'],
-                ['3', 'CC', 'class2', 'male', '2001-01-02', 'male'],
-                ['4', 'DD', 'class1', 'male', '2001-01-02', 'male'],
-                ['5', 'EE', 'class1', 'female', '2001-01-02', 'female'],
-                ['6', 'FF', 'class1', 'male', '2001-01-02', 'male'],
-                ['7', 'GG', 'class3', 'male', '2001-01-02', 'male'],
-                ['8', 'HH', 'class3', 'female', '2001-01-02', 'female'],
-                ['9', 'JJ', 'class1', 'male', '2001-01-02', 'male']
+                [1, 'AA', 'class1', 'male', '2001-01-02', 'male'],
+                [2, 'BB', 'class2', 'female', '2001-01-02', 'female'],
+                [3, 'CC', 'class2', 'male', '2001-01-02', 'male'],
+                [4, 'DD', 'class1', 'male', '2001-01-02', 'male'],
+                [5, 'EE', 'class1', 'female', '2001-01-02', 'female'],
+                [6, 'FF', 'class1', 'male', '2001-01-02', 'male'],
+                [7, 'GG', 'class3', 'male', '2001-01-02', 'male'],
+                [8, 'HH', 'class3', 'female', '2001-01-02', 'female'],
+                [9, 'JJ', 'class1', 'male', '2001-01-02', 'male']
             ]
 
-            const store = new Ext.data.Store({
+            const store = new Ext.data.GroupingStore({
                 proxy: new Ext.data.PagingMemoryProxy(data),
                 reader: new Ext.data.ArrayReader({}, [
                     { name: 'id' },
@@ -66,20 +198,28 @@
                     { name: 'sex' },
                     { name: 'birthday' },
                     { name: 'avatar' }
-                ])
+                ]),
+                groupField: 'className',
+                // multiSort: true,
+                // multiSortInfo: {
+                //     sorters: [{
+                //         field: 'name',
+                //         direction: "DESC"
+                //     }, {
+                //         field: 'className',
+                //         direction: "ASC"
+                //     }],
+                //     direction: 'DESC'
+                // }
+                sortInfo: {
+                    field: 'name',
+                    direction: 'ASC'
+                }
             })
             store.load()
 
-            // var grid = new Ext.grid.GridPanel({
-            //     renderTo: document.body,
-            //     height: 500,
-            //     width: 600,
-            //     store: store,
-            //     cm: columnModel
-            // })
-
             var pagingTb = new Ext.PagingToolbar({
-                pageSize: 3,
+                pageSize: pageSize,
                 store: store,
                 displayInfo: true,
                 displayMsg: '显示第{0}到第{1}条，共{2}条',
@@ -90,20 +230,16 @@
             var grid = new Ext.grid.EditorGridPanel({
                 renderTo: document.body,
                 height: 500,
-                width: 600,
+                width: 680,
                 store: store,
                 cm: columnModel,
                 sm: checkboxModel,
-                viewConfig: {
-                    columnsText: '显示的列',
-                    sortAscText: '升序',
-                    sortDescText: '降序',
-                    forceFit: true
-                },
-                bbar: pagingTb
+                tbar: toolBar,
+                bbar: pagingTb,
+                view: new Ext.grid.GroupingView()
             })
 
-            store.load({params:{start:0,limit:3}}) //  pagingTb.doRefresh()
+            store.load({ params: { start: 0, limit: pageSize } })
         })
     </script>
 </head>
