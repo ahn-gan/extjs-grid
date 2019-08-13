@@ -7,10 +7,103 @@
     <link rel="stylesHeet" type="text/css" href="./resources/css/ext-all.css"/>
     <script type="text/javascript" src="./adapter/ext/ext-base.js"></script>
     <script type="text/javascript" src="./js/ext-all.js"></script>
-    <script type="text/javascript" src="./PagingMemoryProxy.js"></script>
+    <script type="text/javascript" src="./js/PagingMemoryProxy.js"></script>
     <script>
         Ext.onReady(function () {
-            
+            const checkboxModel = new Ext.grid.CheckboxSelectionModel();
+            const columnModel = new Ext.grid.ColumnModel([
+                new Ext.grid.RowNumberer(),
+                checkboxModel,
+                {
+                    header: '编号', dataIndex: 'id'
+                }, {
+                    header: '姓名', dataIndex: 'name', editor: new Ext.grid.GridEditor(
+                        new Ext.form.TextField({
+                            allowBlank: false
+                        })
+                    )
+                }, {
+                    header: '班级', dataIndex: 'className', editor: new Ext.grid.GridEditor(
+                        new Ext.form.TextField({
+                            allowBlank: false
+                        })
+                    )
+                }, {
+                    header: '性别', dataIndex: 'sex', renderer: function (val) {
+                        return (val === 'male') ? '男' : '女'
+                    }
+                }, {
+                    header: '生日', dataIndex: 'birthday',
+                    renderer: Ext.util.Format.dateRenderer('Y-m-d'),
+                    editor: new Ext.grid.GridEditor(
+                        new Ext.form.DateField()
+                    )
+                }, {
+                    header: '头像', dataIndex: 'avatar', renderer: function (val) {
+                        return (val === 'male') ? '<img src="./img/male.svg" width="30%"/>' : '<img src="./img/female.svg" width="30%" />'
+                    }
+                }
+            ])
+
+            const data = [
+                ['1', 'AA', 'class1', 'male', '2001-01-02', 'male'],
+                ['2', 'BB', 'class2', 'female', '2001-01-02', 'female'],
+                ['3', 'CC', 'class2', 'male', '2001-01-02', 'male'],
+                ['4', 'DD', 'class1', 'male', '2001-01-02', 'male'],
+                ['5', 'EE', 'class1', 'female', '2001-01-02', 'female'],
+                ['6', 'FF', 'class1', 'male', '2001-01-02', 'male'],
+                ['7', 'GG', 'class3', 'male', '2001-01-02', 'male'],
+                ['8', 'HH', 'class3', 'female', '2001-01-02', 'female'],
+                ['9', 'JJ', 'class1', 'male', '2001-01-02', 'male']
+            ]
+
+            const store = new Ext.data.Store({
+                proxy: new Ext.data.PagingMemoryProxy(data),
+                reader: new Ext.data.ArrayReader({}, [
+                    { name: 'id' },
+                    { name: 'name' },
+                    { name: 'className' },
+                    { name: 'sex' },
+                    { name: 'birthday' },
+                    { name: 'avatar' }
+                ])
+            })
+            store.load()
+
+            // var grid = new Ext.grid.GridPanel({
+            //     renderTo: document.body,
+            //     height: 500,
+            //     width: 600,
+            //     store: store,
+            //     cm: columnModel
+            // })
+
+            var pagingTb = new Ext.PagingToolbar({
+                pageSize: 3,
+                store: store,
+                displayInfo: true,
+                displayMsg: '显示第{0}到第{1}条，共{2}条',
+                emptyMsg: '没有记录'
+            })
+
+            // 支持修改
+            var grid = new Ext.grid.EditorGridPanel({
+                renderTo: document.body,
+                height: 500,
+                width: 600,
+                store: store,
+                cm: columnModel,
+                sm: checkboxModel,
+                viewConfig: {
+                    columnsText: '显示的列',
+                    sortAscText: '升序',
+                    sortDescText: '降序',
+                    forceFit: true
+                },
+                bbar: pagingTb
+            })
+
+            store.load({params:{start:0,limit:3}}) //  pagingTb.doRefresh()
         })
     </script>
 </head>
